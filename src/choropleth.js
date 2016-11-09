@@ -2,7 +2,8 @@ var L = require('leaflet')
 var chroma = require('chroma-js')
 var _ = {
   defaults: require('lodash/object/defaults'),
-  extend: require('lodash/object/extend')
+  extend: require('lodash/object/extend'),
+  core: require('lodash')
 }
 
 L.choropleth = module.exports = function (geojson, opts) {
@@ -19,23 +20,37 @@ L.choropleth = module.exports = function (geojson, opts) {
   // Save what the user passed as the style property for later use (since we're overriding it)
   var userStyle = opts.style
 
-  // Calculate limits
-  var values = geojson.features.map(function (item) {
-    if (typeof opts.valueProperty === 'function') {
-      return opts.valueProperty(item)
-    } else {
-      return item.properties[opts.valueProperty]
-    }
-  })
-  var limits = chroma.limits(values, opts.mode, opts.steps - 1)
-
   // Create color buckets
   var colors = opts.colors || chroma.scale(opts.scale).colors(opts.steps)
+
+  var limits = null;
+
+  function calculateLimits(geojson, opts) {
+    // Calculate limits
+    var values = geojson.features.map(function (item) {
+      if (typeof opts.valueProperty === 'function') {
+        return opts.valueProperty(item)
+      } else {
+        return item.properties[opts.valueProperty]
+      }
+    })
+    limits = chroma.limits(values, opts.mode, opts.steps - 1)
+  }
+
+  if(geojson !== null && typeof geojson !== 'unlimited' && !_.core.isEmpty(geojson)){
+    calculateLimits(geojson, opts);
+  }
 
   return L.geoJson(geojson, _.extend(opts, {
     limits: limits,
     colors: colors,
+
+    setGeoJSON: function(geojson) {
+      calculateLimits(geojson, opts);
+    },
+
     style: function (feature) {
+
       var style = {}
       var featureValue
 
