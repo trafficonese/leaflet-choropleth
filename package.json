@@ -4,7 +4,7 @@
   "description": "Choropleth plugin for Leaflet (color scale based on value)",
   "main": "src/choropleth.js",
   "scripts": {
-    "build": "webpack -d",
+    "build": "webpack -p",
     "watch": "webpack --watch",
     "test": "standard src | snazzy && mocha test"
   },
