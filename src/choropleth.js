@@ -3,7 +3,6 @@ var chroma = require('chroma-js');
 var _ = {
   defaults: require('lodash/object/defaults'),
   extend: require('lodash/object/extend'),
-  core: require('lodash')
 };
 
 // determine the value for a polygon
@@ -134,15 +133,17 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
       self._legend.resetStyle = resetStyle;
     }
 
+    // proceed on to L.GeoJSON's initialize call, but
+    // don't pass the geojson object yet because
+    // we haven't called setGeoJSON yet
+    L.GeoJSON.prototype.initialize.call(self, null,
+      _.extend(self._options,{style: styleFunction(this)}));
+    
     // call setGeoJSON in case geojson was provided 
     // else it will have to be called manually later.
     if(geojson) {
       self.setGeoJSON(geojson);
     }
-
-    // proceed on to L.GeoJSON's initialize call.
-    L.GeoJSON.prototype.initialize.call(self, geojson,
-      _.extend(self._options,{style: styleFunction(this)}));
 
   },
   onAdd: function(map) {
@@ -169,8 +170,9 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
   },
   setGeoJSON: function(geojson) {
     var self = this;
+		var features = L.Util.isArray(geojson) ? geojson : geojson.features;
     
-    var values = geojson.features.map(function (feature) {
+    var values = features.map(function (feature) {
       return getValue(feature, self._options.valueProperty);
     });
 
@@ -178,7 +180,12 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     // this is because the limits denote a range and colors correspond to the range.
     // So if your limits are [0, 10, 20, 30], you'll have 3 colors one for each range 0-9, 10-19, 20-30
     self._limits = chroma.limits(values, self._options.mode, self._options.steps)
+    //
+    // Add the geojson to L.GeoJSON object so that our geometries are initialized.
+    L.GeoJSON.prototype.addData.call(self, geojson);
+
     
+    // Calculate legend items and add legend if needed
     if(self._legend) {
 
       var legendTitle = self._legend.title,
@@ -198,7 +205,6 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
           div.appendChild(title);
         }
 
-        //self._legend.spanIds = [];
         for (var i = 0; i < (self._limits.length-1); i++) {
           var from, to, span, color, text;
           from = self._limits[i];
@@ -208,7 +214,6 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
           span = document.createElement("span");
           span.classList.add("legendItem");
           span.id = L.stamp(span); // unique id for each legend item.
-          //self._legend.spanIds.push(span.id);
           span.dataset.from = from;
           span.dataset.to = to;
 
@@ -259,7 +264,6 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
               self.eachLayer(function (layer) {
                 var featureValue = getValue(layer.feature, self._options.valueProperty);
 
-                //if (featureValue >= from  && featureValue < to) {
                 if(span.id === layer._legendItemId) {
                     layer.setStyle(highlightStyle);
                     if(highlightStyle.bringToFront) {
@@ -279,7 +283,6 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
 
                 var featureValue = getValue(layer.feature, self._options.valueProperty);
 
-                //if (featureValue >= from  && featureValue < to) {
                 if(span.id === layer._legendItemId) {
                     if(!$.isEmptyObject(resetStyle)) {
                       layer.setStyle(resetStyle);
@@ -298,7 +301,6 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
         return div;
       };
       // depending on how the GeoJSON data is supplied the map may or maynot be present at this time.
-      // add legend to map if map is defined.
       if(self._legend._map) {
         self._legend.addTo(self._legend._map);
       }
