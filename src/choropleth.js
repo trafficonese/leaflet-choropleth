@@ -14,6 +14,23 @@ function getValue(feature, valueProperty) {
     : feature.properties[valueProperty];
 }
 
+function getFillOpacity(feature, fillOpacityFunction) {
+  var fillOpacity;
+  if (
+    typeof fillOpacityFunction === "function" ||
+    typeof fillOpacityFunction === "string"
+  ) {
+    fillOpacity = getValue(feature, fillOpacityFunction);
+  } else if (typeof fillOpacityFunction === "number") {
+    fillOpacity = fillOpacityFunction;
+  }
+  //else {fillOpacity = layer.options.fillOpacity;}
+  else {
+    fillOpacity = fillOpacityFunction;
+  }
+  return fillOpacity;
+}
+
 // returns a function that will set the color for each polygon
 function styleFunction(self) {
   return function styleFeature(feature) {
@@ -32,6 +49,14 @@ function styleFunction(self) {
           break;
         }
       }
+    }
+
+    // fillOpacity treatment
+    if (typeof self._options.fillOpacityProperty !== "undefined") {
+      style.fillOpacity = getFillOpacity(
+        feature,
+        self._options.fillOpacityProperty
+      );
     }
 
     // Return self style, but include the user-defined style if it was passed
@@ -58,6 +83,7 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     // See https://gka.github.io/chroma.js/ for details
     _.defaults(options, {
       valueProperty: "value",
+      fillOpacityProperty: "value",
       scale: ["white", "red"],
       steps: 5,
       mode: "q",
@@ -173,6 +199,65 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
       self._legend.remove(map);
     }
     L.LayerGroup.prototype.onRemove.call(self, map);
+  },
+  restyleGeoJSON: function (valuePropertyFunction, fillOpacityFunction) {
+    var self = this;
+    // update self._options, valuePropertyFunction could be just the property name, but also a function (formula):
+    self._options.valueProperty = valuePropertyFunction;
+    self._options.fillOpacityProperty = fillOpacityFunction;
+
+    // Calculate Limits:
+    var features = $.map(self._layers, function (value, index) {
+      return [value.feature];
+    });
+    var values = features.map(function (feature) {
+      return getValue(feature, self._options.valueProperty);
+    });
+    //
+    // Notes that our limits array has 1 more element than our colors arrary
+    // this is because the limits denote a range and colors correspond to the range.
+    // So if your limits are [0, 10, 20, 30], you'll have 3 colors one for each range 0-9, 10-19, 20-30
+    self._limits = chroma.limits(
+      values,
+      self._options.mode,
+      self._options.steps
+    );
+
+    //_.extend(self._options,{style: styleFunction(this)});
+
+    self.eachLayer(function (layer) {
+      // determine corresponding color for each polygon object:
+      var style = {};
+      var featureValue = getValue(layer.feature, self._options.valueProperty);
+      resetStyle.fillOpacity = getFillOpacity(
+        layer.feature,
+        self._options.fillOpacityProperty
+      );
+
+      if (!isNaN(featureValue)) {
+        // Find the bucket/step/limit that self value is less than and give it that color
+        // skip the first value of the limits that's the min value of our range.
+        var upperLimit;
+        for (var i = 1; i < self._limits.length; i++) {
+          upperLimit =
+            i === self._limits.length - 1
+              ? self._limits[i] + 1
+              : self._limits[i];
+          if (featureValue < upperLimit) {
+            style.fillColor = self._colors[i - 1];
+            break;
+          }
+        }
+      }
+
+      layer.setStyle({
+        fillColor: style.fillColor,
+        fillOpacity: getFillOpacity(
+          layer.feature,
+          self._options.fillOpacityProperty
+        ),
+      });
+    });
   },
   setGeoJSON: function (geojson) {
     var self = this;
