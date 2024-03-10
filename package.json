@@ -20,18 +20,17 @@
     "url": "https://github.com/timwis/leaflet-choropleth.git"
   },
   "license": "MIT",
-  "devDependencies": {
-    "jsdom": "^7.2.0",
-    "mocha": "^2.3.4",
-    "mocha-jsdom": "^1.0.0",
-    "should": "^8.0.0",
-    "snazzy": "^2.0.1",
-    "standard": "^5.4.1",
-    "webpack": "^1.12.3"
-  },
   "dependencies": {
-    "chroma-js": "^1.1.1",
-    "leaflet": "^0.7.7",
-    "lodash": "^3.10.1"
+    "chroma-js": "^2.4.2",
+    "leaflet": "^1.9.4",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0",
+    "mocha": "^10.3.0",
+    "mocha-jsdom": "^1.2.0",
+    "should": "^13.2.3",
+    "snazzy": "^9.0.0",
+    "webpack": "^5.90.3"
   }
 }
