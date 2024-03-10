@@ -23,9 +23,7 @@ function getFillOpacity(feature, fillOpacityFunction) {
     fillOpacity = getValue(feature, fillOpacityFunction);
   } else if (typeof fillOpacityFunction === "number") {
     fillOpacity = fillOpacityFunction;
-  }
-  //else {fillOpacity = layer.options.fillOpacity;}
-  else {
+  } else {
     fillOpacity = fillOpacityFunction;
   }
   return fillOpacity;
@@ -206,14 +204,12 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     self._options.valueProperty = valuePropertyFunction;
     self._options.fillOpacityProperty = fillOpacityFunction;
 
-    // Calculate Limits:
-    var features = $.map(self._layers, function (value, index) {
-      return [value.feature];
+    // push the values of all features in an array and calculate the Limits:
+    var values = [];
+    self.eachLayer(function (layer) {
+      values.push(getValue(layer.feature, valuePropertyFunction));
     });
-    var values = features.map(function (feature) {
-      return getValue(feature, self._options.valueProperty);
-    });
-    //
+
     // Notes that our limits array has 1 more element than our colors arrary
     // this is because the limits denote a range and colors correspond to the range.
     // So if your limits are [0, 10, 20, 30], you'll have 3 colors one for each range 0-9, 10-19, 20-30
@@ -226,37 +222,7 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     //_.extend(self._options,{style: styleFunction(this)});
 
     self.eachLayer(function (layer) {
-      // determine corresponding color for each polygon object:
-      var style = {};
-      var featureValue = getValue(layer.feature, self._options.valueProperty);
-      resetStyle.fillOpacity = getFillOpacity(
-        layer.feature,
-        self._options.fillOpacityProperty
-      );
-
-      if (!isNaN(featureValue)) {
-        // Find the bucket/step/limit that self value is less than and give it that color
-        // skip the first value of the limits that's the min value of our range.
-        var upperLimit;
-        for (var i = 1; i < self._limits.length; i++) {
-          upperLimit =
-            i === self._limits.length - 1
-              ? self._limits[i] + 1
-              : self._limits[i];
-          if (featureValue < upperLimit) {
-            style.fillColor = self._colors[i - 1];
-            break;
-          }
-        }
-      }
-
-      layer.setStyle({
-        fillColor: style.fillColor,
-        fillOpacity: getFillOpacity(
-          layer.feature,
-          self._options.fillOpacityProperty
-        ),
-      });
+      layer.setStyle(self._options.style(layer.feature));
     });
   },
   setGeoJSON: function (geojson) {
@@ -310,11 +276,11 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
               ? self._limits[i + 1] + 1
               : self._limits[i + 1];
 
-          span = document.createElement("span");
-          span.classList.add("legendItem");
-          span.id = L.stamp(span); // unique id for each legend item.
-          span.dataset.from = from;
-          span.dataset.to = to;
+          legendItemDiv = document.createElement("div");
+          legendItemDiv.classList.add("legendItem");
+          legendItemDiv.id = L.stamp(span); // unique id for each legend item.
+          legendItemDiv.dataset.from = from;
+          legendItemDiv.dataset.to = to;
 
           color = document.createElement("i");
           color.style.background = self._colors[i];
@@ -328,12 +294,13 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
           );
           textSpan.appendChild(text);
 
-          span.appendChild(color);
-          span.appendChild(textSpan);
+          legendItemDiv.appendChild(color);
+          legendItemDiv.appendChild(textSpan);
 
-          div.appendChild(span);
+          div.appendChild(legendItemDiv);
           div.appendChild(document.createElement("br"));
 
+          // add highlight mouse events (if enabled):
           if (!$.isEmptyObject(highlightStyle)) {
             self.eachLayer(function (layer) {
               var featureValue = getValue(
@@ -341,7 +308,7 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
                 self._options.valueProperty
               );
               if (featureValue >= from && featureValue < to) {
-                layer._legendItemId = span.id;
+                layer._legendItemId = legendItemDiv.id;
                 if (!layer._highlightLegendItem) {
                   layer._highlightLegendItem = true;
                   layer.on({
@@ -360,20 +327,13 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
               }
             });
 
-            span.addEventListener("mouseover", function (event) {
-              var span = event.currentTarget,
-                from = span.dataset.from,
-                to = span.dataset.to;
+            legendItemDiv.addEventListener("mouseover", function (event) {
+              var legendItemDiv = event.currentTarget;
 
-              span.style["font-weight"] = "bold";
+              legendItemDiv.style["font-weight"] = "bold";
 
               self.eachLayer(function (layer) {
-                var featureValue = getValue(
-                  layer.feature,
-                  self._options.valueProperty
-                );
-
-                if (span.id === layer._legendItemId) {
+                if (legendItemDiv.id === layer._legendItemId) {
                   layer.setStyle(highlightStyle);
                   if (highlightStyle.bringToFront) {
                     layer.bringToFront();
@@ -381,21 +341,18 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
                 }
               });
             });
-            span.addEventListener("mouseout", function (event) {
-              var span = event.currentTarget,
-                from = span.dataset.from,
-                to = span.dataset.to;
+            legendItemDiv.addEventListener("mouseout", function (event) {
+              var legendItemDiv = event.currentTarget;
 
-              span.style["font-weight"] = "normal";
+              legendItemDiv.style["font-weight"] = "normal";
 
               self.eachLayer(function (layer) {
-                var featureValue = getValue(
-                  layer.feature,
-                  self._options.valueProperty
-                );
-
-                if (span.id === layer._legendItemId) {
+                if (legendItemDiv.id === layer._legendItemId) {
                   if (!$.isEmptyObject(resetStyle)) {
+                    resetStyle.fillOpacity = getFillOpacity(
+                      layer.feature,
+                      self._options.fillOpacityProperty
+                    );
                     layer.setStyle(resetStyle);
                   } else {
                     self.resetStyle(layer);
@@ -407,6 +364,25 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
               });
             });
           }
+        }
+
+        // add highlight mouse event on each layer to highlight the corresponding legend text bold:
+        if (!$.isEmptyObject(highlightStyle)) {
+          self.eachLayer(function (layer) {
+            if (layer._legendItemId) {
+              // overwrite mouse event for layers with a valid _legendItemId
+              layer.on({
+                mouseover: legendEventMouseover,
+                mouseout: legendEventMouseout,
+              });
+            } else {
+              // deactivate mouse event for all other layers
+              layer.off({
+                mouseover: legendEventMouseover,
+                mouseout: legendEventMouseout,
+              });
+            }
+          });
         }
 
         return div;
