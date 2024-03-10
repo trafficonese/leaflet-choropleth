@@ -15,6 +15,7 @@ function getValue(feature, valueProperty) {
 }
 
 function getFillOpacity(feature, fillOpacityFunction) {
+  console.log("getFillOpacity fnc");
   var fillOpacity;
   if (
     typeof fillOpacityFunction === "function" ||
@@ -34,6 +35,8 @@ function styleFunction(self) {
   return function styleFeature(feature) {
     var style = {};
     var featureValue = getValue(feature, self._options.valueProperty);
+    console.log("styleFunction - featureValue");
+    console.log(featureValue);
 
     if (!isNaN(featureValue)) {
       // Find the bucket/step/limit that self value is less than and give it that color
@@ -47,6 +50,9 @@ function styleFunction(self) {
           break;
         }
       }
+    } else {
+      // no valid valueProperty:
+      style.fillColor = "#000000";
     }
 
     // fillOpacity treatment
@@ -56,6 +62,8 @@ function styleFunction(self) {
         self._options.fillOpacityProperty
       );
     }
+    console.log("styleFunction - fillOpacity");
+    console.log(fillOpacity);
 
     // Return self style, but include the user-defined style if it was passed
     switch (typeof self._userStyle) {
@@ -209,6 +217,8 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     self.eachLayer(function (layer) {
       values.push(getValue(layer.feature, valuePropertyFunction));
     });
+    console.log("calculate the Limits - values");
+    console.log(values);
 
     // Notes that our limits array has 1 more element than our colors arrary
     // this is because the limits denote a range and colors correspond to the range.
