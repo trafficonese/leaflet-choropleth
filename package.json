@@ -23,7 +23,7 @@
   "dependencies": {
     "chroma-js": "^2.4.2",
     "leaflet": "^1.9.4",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.16"
   },
   "devDependencies": {
     "jsdom": "^24.0.0",
