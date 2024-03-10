@@ -84,9 +84,13 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
           options.channelMode !== "rgb" ? cols.mode(options.channelMode) : cols; //rgb is default.
         cols = options.correctLightness ? cols.correctLightness() : cols;
       }
+      var steps = options.steps;
+      if (Array.isArray(steps)) {
+        steps = steps.length;
+      }
       cols = options.padding
-        ? cols.padding(options.padding).colors(options.steps)
-        : cols.colors(options.steps);
+        ? cols.padding(options.padding).colors(steps)
+        : cols.colors(steps);
     }
     self._colors = cols;
 
@@ -166,7 +170,7 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
   onRemove: function (map) {
     var self = this;
     if (self._legend) {
-      self._legend.removeFrom(map);
+      self._legend.remove(map);
     }
     L.LayerGroup.prototype.onRemove.call(self, map);
   },
@@ -181,11 +185,15 @@ L.GeoJSONChoropleth = L.GeoJSON.extend({
     // Notes that our limits array has 1 more element than our colors arrary
     // this is because the limits denote a range and colors correspond to the range.
     // So if your limits are [0, 10, 20, 30], you'll have 3 colors one for each range 0-9, 10-19, 20-30
-    self._limits = chroma.limits(
-      values,
-      self._options.mode,
-      self._options.steps
-    );
+    if (Array.isArray(self._options.steps)) {
+      self._limits = self._options.steps;
+    } else {
+      self._limits = chroma.limits(
+        values,
+        self._options.mode,
+        self._options.steps
+      );
+    }
     //
     // Add the geojson to L.GeoJSON object so that our geometries are initialized.
     L.GeoJSON.prototype.addData.call(self, geojson);
