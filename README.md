@@ -21,6 +21,7 @@ L.choropleth(geojsonData, {
 	scale: ['white', 'red'], // chroma.js scale - include as many as you like
 	steps: 5, // number of breaks or steps in range
 	mode: 'q', // q for quantile, e for equidistant, k for k-means
+	fillOpacityProperty: 'opacity', // optional: per-feature fill opacity (string, number, or function)
 	style: {
 		color: '#fff', // border color
 		weight: 2,
@@ -36,6 +37,12 @@ L.choropleth(geojsonData, {
 Just make sure the number of colors is the same as the number of `steps` specified.
 * **valueProperty**: To use computed values (such as [standardizing](http://axismaps.github.io/thematic-cartography/articles/standardize.html)),
 you can use a function for `valueProperty` that is passed `(feature)` and returns a number ([example](examples/computed_values/demo.js)).
+* **fillOpacityProperty**: Optionally set fill opacity per feature. When set, it overrides `style.fillOpacity`. Accepts:
+  * a **string** – property name in `feature.properties` (e.g. `'opacity'`)
+  * a **number** – constant opacity for all features (e.g. `0.6`)
+  * a **function** – passed `(feature)` and returns a number
+
+  Invalid or missing values are ignored, so `style.fillOpacity` remains the fallback. Legend highlight/reset also restores this per-feature opacity.
 
 ## Installation
 * via NPM: `npm install leaflet-choropleth`
